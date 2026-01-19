@@ -42,14 +42,11 @@ export class MeteorSpawner {
     const currentPhase = this.getCurrentDifficultyPhase();
     if (currentPhase) {
       const requiredInterval = currentPhase.spawnInterval * this.debugFrequencyMultiplier;
-      console.log(`Spawn check: timer=${this.spawnTimer.toFixed(2)} >= required=${requiredInterval.toFixed(2)} ? ${this.spawnTimer >= requiredInterval}`);
-      
+
       if (this.spawnTimer >= requiredInterval) {
         this.trySpawnMeteor();
         this.spawnTimer = 0;
       }
-    } else {
-      console.log('No current phase available');
     }
 
     this.updateMeteors(deltaTime);
@@ -67,29 +64,18 @@ export class MeteorSpawner {
 
   private trySpawnMeteor() {
     if (this.meteors.length >= this.maxSimultaneousMeteors) {
-      console.log('Max meteors reached:', this.meteors.length, '>=', this.maxSimultaneousMeteors);
       return; // Too many meteors already
     }
 
     const target = this.generateValidTarget();
     if (target) {
-      console.log('Creating meteor at:', target);
       const meteor = new Meteor(target);
-      
+
       // Apply current debug speed to new meteors
       meteor.setFallSpeed(this.debugMeteorSpeed);
-      
-      // Apply beginner grace period
-      if (this.gameTime < this.beginnerGracePeriod) {
-        // TODO: Apply reduced explosion radius
-        // This would require modifying the Meteor class to accept explosion radius
-      }
-      
+
       this.meteors.push(meteor);
       this.addRecentTarget(target);
-      console.log('Meteor created, total meteors:', this.meteors.length);
-    } else {
-      console.log('Could not generate valid target');
     }
   }
 
@@ -146,17 +132,12 @@ export class MeteorSpawner {
   }
 
   addMeteorsToScene(scene: THREE.Scene) {
-    this.meteors.forEach((meteor, index) => {
+    this.meteors.forEach(meteor => {
       const group = meteor.getGroup();
-      console.log(`Meteor ${index}: group.parent =`, group.parent, 'children count:', group.children.length);
       if (!group.parent) {
         scene.add(group);
-        console.log(`Added meteor ${index} to scene!`);
-      } else {
-        console.log(`Meteor ${index} already in scene`);
       }
     });
-    console.log('Total meteors in spawner:', this.meteors.length);
   }
 
   reset() {

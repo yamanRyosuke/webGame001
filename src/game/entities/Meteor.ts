@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getTerrainHeight } from '../three/SceneFactory';
 
 export enum MeteorState {
   Telegraph = 'telegraph',
@@ -28,12 +29,10 @@ export class Meteor {
   constructor(targetPos: THREE.Vector3) {
     this.targetPosition.copy(targetPos);
     this.targetPosition.y = 0; // Ground level
-    
+
     this.position.set(targetPos.x, this.spawnHeight, targetPos.z);
     this.createMesh();
     this.createTelegraph();
-    
-    console.log('Meteor constructor - target:', this.targetPosition, 'meteor pos:', this.position);
   }
 
   private createMesh() {
@@ -66,29 +65,24 @@ export class Meteor {
   }
 
   private createTelegraph() {
-    // Debug: Create a very obvious 3D object at origin for testing
-    const telegraphGeometry = new THREE.BoxGeometry(2, 3, 2);
-    const telegraphMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x00ff00, // Bright green
-      transparent: false,
-      opacity: 1.0,
-      side: THREE.DoubleSide // Render both sides
+    // Warning circle on ground showing where meteor will land
+    const telegraphGeometry = new THREE.RingGeometry(0.3, this.telegraphRadius, 32);
+    const telegraphMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff4444,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
     });
-    
+
     this.telegraph = new THREE.Mesh(telegraphGeometry, telegraphMaterial);
-    // Force position at origin for testing
-    this.telegraph.position.set(0, 2, 0); // Center of stage, 2 units high
-    this.telegraph.scale.set(1, 1, 1); // Ensure proper scaling
-    this.telegraph.visible = true; // Explicitly set visible
-    
+    // Rotate to lie flat on the ground
+    this.telegraph.rotation.x = -Math.PI / 2;
+    // Position relative to group: group is at spawnHeight, telegraph should be at ground (y=0)
+    // So local Y offset = targetY - groupY = 0 - spawnHeight = -spawnHeight
+    this.telegraph.position.set(0, -this.spawnHeight + 0.01, 0);
+    this.telegraph.visible = true;
+
     this.group.add(this.telegraph);
-    
-    console.log('DEBUG Telegraph (GREEN BOX) forced at origin (0,2,0)');
-    console.log('Original target was:', this.targetPosition);
-    console.log('Telegraph material:', telegraphMaterial);
-    console.log('Telegraph geometry bounding box:', telegraphGeometry.boundingBox);
-    telegraphGeometry.computeBoundingBox();
-    console.log('Computed bounding box:', telegraphGeometry.boundingBox);
   }
 
   update(deltaTime: number): boolean {
@@ -112,25 +106,20 @@ export class Meteor {
   }
 
   private updateTelegraph(_deltaTime: number) {
-    // Keep telegraph always visible for debugging
-    this.telegraph.visible = true;
-    
-    // Make it move up and down to be more noticeable
-    this.telegraph.position.y = 1 + Math.sin(this.timer * 5) * 0.5;
-    
-    // Debug scene status every few frames
-    if (Math.floor(this.timer * 10) % 20 === 0) {
-      this.debugSceneStatus();
-    }
+    // Pulse effect - scale and opacity animation
+    const pulse = 0.8 + Math.sin(this.timer * 8) * 0.2;
+    this.telegraph.scale.set(pulse, pulse, 1);
+
+    // Fade in opacity
+    const material = this.telegraph.material as THREE.MeshBasicMaterial;
+    material.opacity = 0.3 + (this.timer / this.telegraphDuration) * 0.4;
 
     // Transition to falling state
     if (this.timer >= this.telegraphDuration) {
       this.state = MeteorState.Falling;
       this.telegraph.visible = false;
       this.mesh.visible = true;
-      
-      console.log('Telegraph -> Falling transition');
-      
+
       // Calculate fall velocity
       const direction = this.targetPosition.clone().sub(this.position).normalize();
       this.velocity = direction.multiplyScalar(this.fallSpeed);
@@ -140,13 +129,14 @@ export class Meteor {
   private updateFalling(deltaTime: number) {
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
     this.group.position.copy(this.position);
-    
+
     // Add rotation for visual effect
     this.mesh.rotation.x += deltaTime * 2;
     this.mesh.rotation.z += deltaTime * 1.5;
 
-    // Check if hit ground
-    if (this.position.y <= 0) {
+    // Check if hit terrain
+    const terrainHeight = getTerrainHeight(this.position.x, this.position.z);
+    if (this.position.y <= terrainHeight + this.meteorRadius) {
       this.explode();
     }
   }
@@ -177,32 +167,6 @@ export class Meteor {
 
   getGroup(): THREE.Group {
     return this.group;
-  }
-
-  // Debug method to check scene status
-  debugSceneStatus() {
-    console.log('=== METEOR DEBUG STATUS ===');
-    console.log('- Group parent:', this.group.parent?.type || 'No parent');
-    console.log('- Group children count:', this.group.children.length);
-    console.log('- Telegraph visible:', this.telegraph.visible);
-    console.log('- Telegraph position:', this.telegraph.position);
-    console.log('- Telegraph world position:', this.telegraph.getWorldPosition(new THREE.Vector3()));
-    console.log('- Group position:', this.group.position);
-    console.log('- Group world position:', this.group.getWorldPosition(new THREE.Vector3()));
-    console.log('- Telegraph material type:', this.telegraph.material.constructor.name);
-    console.log('- Telegraph geometry type:', this.telegraph.geometry.constructor.name);
-    console.log('- Telegraph material color:', this.telegraph.material.color);
-    console.log('- Telegraph scale:', this.telegraph.scale);
-    console.log('- Group scale:', this.group.scale);
-    
-    // Check if object is in camera frustum
-    if (this.group.parent && this.group.parent.type === 'Scene') {
-      console.log('- Object is properly in scene');
-    } else {
-      console.log('- WARNING: Object not properly in scene');
-    }
-    
-    console.log('=== END DEBUG STATUS ===');
   }
 
   getBoundingSphere(): THREE.Sphere {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getTerrainHeight } from '../three/SceneFactory';
 
 export class Creature {
   private mesh!: THREE.Mesh;
@@ -156,14 +157,17 @@ export class Creature {
 
   private updatePosition(deltaTime: number) {
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
-    
+
     // Constrain to stage bounds
     const maxPos = 5 - this.stageMargin;
     const minPos = -maxPos;
-    
+
     this.position.x = Math.max(minPos, Math.min(maxPos, this.position.x));
     this.position.z = Math.max(minPos, Math.min(maxPos, this.position.z));
-    this.position.y = this.radius / 2; // Keep on ground
+
+    // Follow terrain surface
+    const terrainHeight = getTerrainHeight(this.position.x, this.position.z);
+    this.position.y = terrainHeight + this.radius + 0.3; // Height offset for creature
   }
 
   takeDamage() {

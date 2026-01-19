@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { InputState } from '../input/InputManager';
+import { getTerrainHeight } from '../three/SceneFactory';
 
 export class Player {
   private mesh!: THREE.Mesh;
@@ -208,9 +209,20 @@ export class Player {
   }
 
   private updateGroundCheck() {
-    // Simple ground check - if position is near ground level
-    if (this.position.y <= 0.6 && this.velocity.y <= 0) {
-      this.position.y = 0.6;
+    // Get terrain height at current position
+    const terrainHeight = getTerrainHeight(this.position.x, this.position.z);
+    const groundLevel = terrainHeight + 0.6; // Player height offset
+
+    // If already grounded, always follow terrain
+    if (this.isGrounded) {
+      this.position.y = groundLevel;
+      this.velocity.y = 0;
+      return;
+    }
+
+    // Check if landing on ground (falling and reached ground level)
+    if (this.position.y <= groundLevel && this.velocity.y <= 0) {
+      this.position.y = groundLevel;
       this.velocity.y = 0;
       this.isGrounded = true;
     }

@@ -56,14 +56,6 @@ export class Game {
 
   private setupScene() {
     this.scene = SceneFactory.createGameScene();
-    
-    // DEBUG: Add a test cube directly to scene to verify rendering works
-    const testGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const testMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const testCube = new THREE.Mesh(testGeometry, testMaterial);
-    testCube.position.set(-3, 1, 0); // Position it away from center
-    this.scene.add(testCube);
-    console.log('DEBUG: Added red test cube at (-3, 1, 0) to verify rendering');
   }
 
   private setupCamera() {
@@ -213,22 +205,7 @@ export class Game {
     // Update meteors
     this.meteorSpawner.update(deltaTime);
     this.meteorSpawner.addMeteorsToScene(this.scene);
-    
-    // DEBUG: Every 3 seconds, try adding a simple test object to see if it renders
-    if (Math.floor(this.meteorSpawner.getGameTime()) % 3 === 0 && Math.floor(this.meteorSpawner.getGameTime() * 10) % 10 === 0) {
-      const debugGeo = new THREE.SphereGeometry(0.5, 8, 6);
-      const debugMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-      const debugSphere = new THREE.Mesh(debugGeo, debugMat);
-      debugSphere.position.set(Math.random() * 4 - 2, 1, Math.random() * 4 - 2);
-      this.scene.add(debugSphere);
-      console.log('DEBUG: Added blue test sphere at', debugSphere.position, 'to scene');
-      
-      // Remove it after 0.5 seconds
-      setTimeout(() => {
-        this.scene.remove(debugSphere);
-      }, 500);
-    }
-    
+
     // Update effects
     this.effectsSystem.update(deltaTime);
     
